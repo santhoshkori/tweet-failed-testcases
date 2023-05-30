@@ -190,9 +190,9 @@ app.get("/user/followers/", auth_middleware_fun, async (request, response) => {
 //api 6
 app.get("/tweets/:tweetId/", auth_middleware_fun, async (request, response) => {
   const { tweetId } = request.params;
-  console.log(tweetId);
+  
   const user_name = request.username;
-  //console.log(user_name);
+  
   ///////////////////////////////////////////////////
   const latest_tweete_query = `
     SELECT 
@@ -204,7 +204,7 @@ app.get("/tweets/:tweetId/", auth_middleware_fun, async (request, response) => {
     ;`;
   const find_user = await tweet.get(latest_tweete_query);
   const login_user_id = find_user.user_id;
-  console.log(login_user_id);
+  
   /////////////////////////////////////
   const get_tweet_query = `
   SELECT
@@ -215,7 +215,7 @@ app.get("/tweets/:tweetId/", auth_middleware_fun, async (request, response) => {
   ;`;
   const get_tweet = await tweet.all(get_tweet_query);
   const user_id_following = get_tweet[0].user_id;
-  console.log(user_id_following);
+  
   //////////////////////////////////////////////
   const get_name_person_details = `
   SELECT
@@ -227,7 +227,7 @@ app.get("/tweets/:tweetId/", auth_middleware_fun, async (request, response) => {
   follower.follower_user_id=${login_user_id} AND follower.following_user_id=${user_id_following}
   ;`;
   const get_names = await tweet.get(get_name_person_details);
-  console.log(get_names);
+  
   if (get_names === undefined) {
     response.status(400);
     response.send("Invalid Request");
@@ -244,6 +244,6 @@ app.get("/tweets/:tweetId/", auth_middleware_fun, async (request, response) => {
     response.send(get_likes_reply);
   }
 });
-console.log(__dirname);
+
 
 module.exports = app;
