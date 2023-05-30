@@ -30,7 +30,7 @@ connect_to_tweet_DB();
 app.post("/register", async (request, response) => {
   let { username, name, password, gender, location } = request.body;
   const length_pass = password.length;
-  const hashed_pass = bcrypt.hash(password, 10);
+  const hashed_pass = await bcrypt.hash(password, 10);
   //console.log(username);
   const check_user = `SELECT * FROM user WHERE username="${username}";`;
   const get_user = await tweet.get(check_user);
@@ -106,48 +106,143 @@ app.get(
   async (request, response) => {
     //console.log("user_op");
     const user_name = request.username;
+    //console.log(user_name);
     const latest_tweete_query = `
-    SELECT
-    username,tweet,date_time
-    FROM
-    (user INNER JOIN follower ON user.user_id=follower.following_user_id) AS NEWTABLE INNER JOIN tweet ON NEWTABLE.following_user_id=tweet.user_id
+    SELECT 
+    *
+    FROM 
+    user 
     WHERE
-    user.username="${user_name}"
-    LIMIT 4
-    OFFSET 0    
-
-
-     
+    username="${user_name}"
     ;`;
-    const latest_tweete = await tweet.all(latest_tweete_query);
-    response.send(latest_tweete);
+    const find_user = await tweet.get(latest_tweete_query);
+    const login_user_id = find_user.user_id;
+    const get_tweets_of_people = `
+    SELECT
+    user.username,tweet,tweet.date_time AS dateTime
+    FROM 
+    follower INNER JOIN tweet ON follower.following_user_id=tweet.user_id
+    
+    INNER JOIN user
+ON tweet.user_id = user.user_id
+WHERE
+follower.follower_user_id=${login_user_id}
+ORDER BY tweet.date_time DESC
+
+LIMIT 4
+OFFSET 0
+    ;`;
+    const get_tweets = await tweet.all(get_tweets_of_people);
+    response.send(get_tweets);
   }
 );
 
 app.get("/user/following/", auth_middleware_fun, async (request, response) => {
   const user_name = request.username;
-  const following_query = `
-  SELECT 
-  name
-  FROM 
-  user INNER JOIN follower ON user.user_id=follower.following_user_id
-  WHERE
-  username="${user_name}";`;
-  const folling_user = await tweet.all(following_query);
-  response.send([folling_user]);
-});
+  //console.log(user_name);
+  const latest_tweete_query = `
+    SELECT 
+    *
+    FROM 
+    user 
+    WHERE
+    username="${user_name}"
+    ;`;
+  const find_user = await tweet.get(latest_tweete_query);
+  const login_user_id = find_user.user_id;
 
+  const get_name_person_details = `
+  SELECT
+  user.name
+  FROM
+  follower INNER JOIN user on follower.following_user_id=user.user_id
+  WHERE
+  follower.follower_user_id=${login_user_id}
+  ;`;
+  const get_names = await tweet.all(get_name_person_details);
+  response.send(get_names);
+});
+//api--5 Returns the list of all names of people who follows the user
 app.get("/user/followers/", auth_middleware_fun, async (request, response) => {
   const user_name = request.username;
-  const follower_query = `
-  SELECT 
-  *
-  FROM 
-  user INNER JOIN follower ON user.user_id=follower.follower_user_id
-  WHERE
-  username="${user_name}"
+  //console.log(user_name);
+  const latest_tweete_query = `
+    SELECT 
+    *
+    FROM 
+    user 
+    WHERE
+    username="${user_name}"
+    ;`;
+  const find_user = await tweet.get(latest_tweete_query);
+  const login_user_id = find_user.user_id;
+  const followers_query = `
+  SELECT
+  user.name
+  FROM
+  follower INNER JOIN user ON follower.follower_user_id=user.user_id
+  WHERE 
+  follower.following_user_id=${login_user_id}
   ;`;
-  const follwers = await tweet.all(follower_query);
-  response.send(follwers);
+  const get_followers = await tweet.all(followers_query);
+  response.send(get_followers);
 });
+//api 6
+app.get("/tweets/:tweetId/", auth_middleware_fun, async (request, response) => {
+  const { tweetId } = request.params;
+  console.log(tweetId);
+  const user_name = request.username;
+  //console.log(user_name);
+  ///////////////////////////////////////////////////
+  const latest_tweete_query = `
+    SELECT 
+    *
+    FROM 
+    user 
+    WHERE
+    username="${user_name}"
+    ;`;
+  const find_user = await tweet.get(latest_tweete_query);
+  const login_user_id = find_user.user_id;
+  console.log(login_user_id);
+  /////////////////////////////////////
+  const get_tweet_query = `
+  SELECT
+  *
+  FROM tweet 
+  WHERE
+  tweet_id=${tweetId}
+  ;`;
+  const get_tweet = await tweet.all(get_tweet_query);
+  const user_id_following = get_tweet[0].user_id;
+  console.log(user_id_following);
+  //////////////////////////////////////////////
+  const get_name_person_details = `
+  SELECT
+  user.name,
+  user.user_id
+  FROM
+  follower INNER JOIN user on follower.following_user_id=user.user_id
+  WHERE
+  follower.follower_user_id=${login_user_id} AND follower.following_user_id=${user_id_following}
+  ;`;
+  const get_names = await tweet.get(get_name_person_details);
+  console.log(get_names);
+  if (get_names === undefined) {
+    response.status(400);
+    response.send("Invalid Request");
+  } else {
+    const get_tweet_query_ouput = `
+  SELECT
+  tweet.tweet,COUNT(like.like_id) AS likes,COUNT(reply.reply_id) AS replies,tweet.date_time AS dateTime
+  FROM 
+  tweet INNER JOIN like ON tweet.tweet_id=like.tweet_id INNER JOIN reply on tweet.tweet_id=reply.tweet_id
+  WHERE
+  tweet.tweet_id=${tweetId}
+  ;`;
+    const get_likes_reply = await tweet.get(get_tweet_query_ouput);
+    response.send(get_likes_reply);
+  }
+});
+
 module.exports = app;
