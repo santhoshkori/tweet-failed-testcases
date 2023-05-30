@@ -244,5 +244,6 @@ app.get("/tweets/:tweetId/", auth_middleware_fun, async (request, response) => {
     response.send(get_likes_reply);
   }
 });
+console.log(__dirname);
 
 module.exports = app;
